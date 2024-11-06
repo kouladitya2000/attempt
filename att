@@ -3,74 +3,74 @@ import json
 from collections import defaultdict
 
 # Load the data from Excel
-excel_path = "C:\\Users\\acer\\Downloads\\test.xlsx"
-df = pd.read_excel(excel_path, skiprows=1)
+excel_path = "C:\\Users\\45270978\\Desktop\\try\\NewPetVmOrderTemplate.xlsx"
+data = pd.read_excel(excel_path, skiprows=1)
 
-# Function to create the nested JSON structure
-def create_nested_dict(df):
-    nested_dict = defaultdict(dict)
-    
-    for _, row in df.iterrows():
-        resource_group_name = row['resourceGroupName']
-        
-        # Populate the nested dictionary structure based on provided attributes
-        nested_dict[resource_group_name] = {
-            "instance-type": row['instance-type'],
-            "instance-creation": {
-                "name-label": row['name-label'],
-                "requestorID": row['requestorID'],
-                "requestorEmail": row['requestorEmail'],
-                "locationCode": row['locationCode'],
-                "billingCode": row['billingCode'],
-                "codeTypeName": row['codeTypeName'],
-                "service": row['service'],
-                "osVersionName": row['osVersionName'],
-                "osImageType": row['osImageType'],
-                "machineType": row['machineType'],
-                "zone": row['zone'],
-                "additional-disks": [
-                    {
-                        "additionalDiskName": row['additional-disks.additionalDiskName'],
-                        "additionalDiskSize": row['additional-disks.additionalDiskSize'],
-                        "additionalDiskType": row['additional-disks.additionalDiskType'],
-                        "additionalDiskLun": row['additional-disks.additionalDiskLun']
-                    }
-                ]
-            },
-            "network-tags": [],
-            "windows-only": {
-                "owner": row['windows-only.owner'],
-                "approvers": [row['windows-only.approver1'], row['windows-only.approver2']],
-                "BusinessUnit": row['windows-only.BusinessUnit'],
-                "SupportEntity": row['windows-only.SupportEntity']
-            },
-            "linux-only": {
-                "centrify": row['linux-only.centrify']
-            },
-            "network-optional": {
-                "vnetName": row['network-optional.vnetName'],
-                "vnetResourceGroupName": row['network-optional.vnetResourceGroupName'],
-                "subnetName": row['network-optional.subnetName'],
-                "ipAddress": row['network-optional.ipAddress'],
-                "proxyServer": row['network-optional.proxyServer'],
-                "proxyPort": row['network-optional.proxyPort']
-            },
-            "instance-deletion": {
-                "demise": row['demise'],
-                "crNumber": row['crNumber']
-            }
+# Clean and preprocess the data as per your current code
+data_cleaned = data[data['Attribute'].notna() & (data['Attribute'].str.strip() != '')]
+data_cleaned = data_cleaned.drop(columns='Example', errors='ignore')
+data_cleaned = data_cleaned.dropna(axis=1, how='all')
+data_cleaned = data_cleaned.replace({pd.NA: ''})
+
+# Function to create a nested dictionary from the cleaned DataFrame row
+def create_nested_dict(row):
+    return {
+        "instance-type": row.get('instance-type', ''),
+        "instance-creation": {
+            "name-label": row.get('name-label', ''),
+            "requestorID": row.get('requestorID', ''),
+            "requestorEmail": row.get('requestorEmail', ''),
+            "locationCode": row.get('locationCode', ''),
+            "billingCode": row.get('billingCode', ''),
+            "codeTypeName": row.get('codeTypeName', ''),
+            "service": row.get('service', ''),
+            "osVersionName": row.get('osVersionName', ''),
+            "osImageType": row.get('osImageType', ''),
+            "machineType": row.get('machineType', ''),
+            "zone": row.get('zone', ''),
+            "additional-disks": [
+                {
+                    "additionalDiskName": row.get('additional-disks.additionalDiskName', ''),
+                    "additionalDiskSize": row.get('additional-disks.additionalDiskSize', ''),
+                    "additionalDiskType": row.get('additional-disks.additionalDiskType', ''),
+                    "additionalDiskLun": row.get('additional-disks.additionalDiskLun', '')
+                }
+            ]
+        },
+        "network-tags": [],
+        "windows-only": {
+            "owner": row.get('windows-only.owner', ''),
+            "approvers": [
+                row.get('windows-only.approver1', ''), 
+                row.get('windows-only.approver2', '')
+            ],
+            "BusinessUnit": row.get('windows-only.BusinessUnit', ''),
+            "SupportEntity": row.get('windows-only.SupportEntity', '')
+        },
+        "linux-only": {
+            "centrify": row.get('linux-only.centrify', '')
+        },
+        "network-optional": {
+            "vnetName": row.get('network-optional.vnetName', ''),
+            "vnetResourceGroupName": row.get('network-optional.vnetResourceGroupName', ''),
+            "subnetName": row.get('network-optional.subnetName', ''),
+            "ipAddress": row.get('network-optional.ipAddress', ''),
+            "proxyServer": row.get('network-optional.proxyServer', ''),
+            "proxyPort": row.get('network-optional.proxyPort', '')
+        },
+        "instance-deletion": {
+            "demise": row.get('demise', ''),
+            "crNumber": row.get('crNumber', '')
         }
+    }
+
+# Iterate over rows to create nested JSON files as per the current logic
+i = data_cleaned.shape[1]
+for idx in range(1, i):
+    row_dict = dict(zip(data_cleaned.iloc[:, 0], data_cleaned.iloc[:, idx]))
+    nested_dict = create_nested_dict(row_dict)
     
-    return nested_dict
-
-# Create the nested dictionary
-nested_data = create_nested_dict(df)
-
-# Convert to JSON
-nested_json = json.dumps(nested_data, indent=4)
-print(nested_json)
-
-# Save JSON to file
-output_path = "C:\\Users\\acer\\Downloads\\test.json"
-with open(output_path, 'w') as json_file:
-    json_file.write(nested_json)
+    # Save each nested JSON to a file
+    output_path = f"C:\\Users\\45270978\\Desktop\\try\\testing_file_created_{idx}.json"
+    with open(output_path, 'w') as json_file:
+        json.dump(nested_dict, json_file, indent=4)
