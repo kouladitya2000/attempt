@@ -1,0 +1,22 @@
+param (
+    [Parameter(Mandatory = $true)]
+    [string]$subscriptionName
+)
+
+Write-Host "Running Function App Pester Tests for subscription: $subscriptionName"
+
+BeforeAll {
+    az account set --subscription $subscriptionName
+}
+
+Describe "Validate Azure Function App Resources" {
+    It "Check App Service Plan Exists" {
+        $plan = az appservice plan list --query "[?name=='my-app-service-plan']" | ConvertFrom-Json
+        $plan.Count | Should -BeGreaterThan 0
+    }
+
+    It "Check Function App Exists" {
+        $func = az functionapp list --query "[?name=='my-function-app']" | ConvertFrom-Json
+        $func.Count | Should -BeGreaterThan 0
+    }
+}
