@@ -1,0 +1,107 @@
+# Accepts the Azure subscription name as a parameter
+param (
+    [Parameter(Mandatory = $true)]
+    [string]$subscriptionName
+)
+
+# Prints a timestamped section header in the pipeline logs
+Write-Host "##[section]$(Get-Date): Run Pester Checks"
+
+# --------------------------------------
+# Phase 1: Discovery
+# --------------------------------------
+BeforeDiscovery {
+    # Array of function apps to test — update names as needed
+    $arrFAs = @(
+        @{ Name = "my-funcapp-01" }
+        @{ Name = "my-funcapp-02" }
+    )
+}
+
+# --------------------------------------
+# Phase 2: Setup before all tests
+# --------------------------------------
+BeforeAll {
+    # Retry logic to handle flaky az CLI context switching
+    $maxRetries = 3
+    $retryCount = 0
+    $success = $false
+
+    while ($retryCount -lt $maxRetries -and -not $success) {
+        try {
+            # Sleep before and after setting context
+            Start-Sleep -Seconds 2
+            Write-Host "##[section] Setting subscription context"
+            Start-Sleep -Seconds 2
+
+            # Set the Azure context
+            az account set --subscription $subscriptionName --output none
+            $success = $true
+        } catch {
+            # If it fails, increment retry count and log a warning
+            $retryCount++
+            Write-Host "##vso[task.logissue type=warning] Set-AZContext attempt $retryCount failed."
+            Start-Sleep 2
+        }
+    }
+
+    # If all retries fail, exit the test and fail the pipeline
+    if (-not $success) {
+        Write-Host "##vso[task.logissue type=error] Failed Set-AzContext"
+        Write-Host "##vso[task.complete result=Failed;] Failed Set-AzContext"
+        exit 1
+    }
+
+    # Fetch all function apps from the subscription
+    $objFAs = az functionapp list | ConvertFrom-Json
+}
+
+# --------------------------------------
+# Helper function: Check if a Function App exists
+# --------------------------------------
+function Get-FAExists {
+    param (
+        [Parameter(Mandatory = $true)][string]$faName
+    )
+    # Find matching Function App by name
+    $objFA = $objFAs | Where-Object { $_.name -eq $faName }
+    return [bool]$objFA
+}
+
+# --------------------------------------
+# Helper function: Check if a Function App is running
+# --------------------------------------
+function Get-FAIsRunning {
+    param (
+        [Parameter(Mandatory = $true)][string]$faName
+    )
+    $objFA = $objFAs | Where-Object { $_.name -eq $faName }
+
+    if ($objFA) {
+        # Check if state is "Running"
+        return ($objFA.state -eq "Running")
+    } else {
+        return $false
+    }
+}
+
+# --------------------------------------
+# The actual tests using Describe + It blocks
+# --------------------------------------
+Describe "Test Function App <Name>" -ForEach ($arrFAs) {
+    
+    # Test 1: Check existence
+    It "Function App Exists" {
+        Get-FAExists $name | Should -Be $true
+    }
+
+    # Test 2: Check if it's running
+    It "Function App is Running" {
+        Get-FAIsRunning $name | Should -Be $true
+    }
+
+    # Optional vague test example:
+    # It "Function App uses HTTPS only" {
+    #     ($objFAs | Where-Object { $_.name -eq $name }).httpsOnly | Should -Be $true
+    # }
+}
