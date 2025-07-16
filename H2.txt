@@ -1,0 +1,20 @@
+# Input values
+$storageAccountName = "<yourStorageAccountName>"
+$resourceGroupName  = "<yourResourceGroupName>"
+$containerName      = "<yourContainerName>"
+$localFilePath      = "C:\Path\To\Your\File.txt"
+$blobName           = "File.txt"  # You can change the name in blob if needed
+
+# Login to Azure (skip if already logged in)
+Connect-AzAccount
+
+# Get the storage account key
+$storageKey = (Get-AzStorageAccountKey -ResourceGroupName $resourceGroupName -Name $storageAccountName)[0].Value
+
+# Create a storage context
+$ctx = New-AzStorageContext -StorageAccountName $storageAccountName -StorageAccountKey $storageKey
+
+# Upload the file to the blob container
+Set-AzStorageBlobContent -File $localFilePath -Container $containerName -Blob $blobName -Context $ctx -Force
+
+Write-Host "✅ File uploaded successfully to blob: $blobName"
