@@ -1,0 +1,7 @@
+$currentTime = Get-Date
+
+# Save ISO timestamp *without* newline using .NET method
+[System.IO.File]::WriteAllText($localPath, $currentTime.ToString("o"))
+
+# Upload updated file to Azure Blob Storage
+Set-AzStorageBlobContent -File $localPath -Container $containerName -Blob $blobName -Context $ctx -Force
